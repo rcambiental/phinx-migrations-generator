@@ -67,10 +67,12 @@ class PhinxMySqlGenerator
         $this->output = $output;
 
         $default = [
-            // Experimental foreign key support.
+            // Experimental foreign key support
             'foreign_keys' => false,
             // Default migration table name
             'default_migration_table' => 'phinxlog',
+            // Cross database foreign keys support
+            'cross_database_foreign_keys' => false
         ];
 
         $this->options = array_replace_recursive($default, $options) ?: [];
@@ -122,7 +124,7 @@ class PhinxMySqlGenerator
             $output[] = $this->getSetUniqueChecks(0);
             $output[] = $this->getSetForeignKeyCheck(0);
         }
-
+        
         $output = $this->getTableMigrationNewDatabase($output, $new, $old);
         $output = $this->getTableMigrationTables($output, $new, $old);
 
@@ -174,9 +176,11 @@ class PhinxMySqlGenerator
         if (empty($new['database'])) {
             return $output;
         }
+        
         if ($this->neq($new, $old, ['database', 'default_character_set_name'])) {
             $output[] = $this->getAlterDatabaseCharset($new['database']['default_character_set_name']);
         }
+        
         if ($this->neq($new, $old, ['database', 'default_collation_name'])) {
             $output[] = $this->getAlterDatabaseCollate($new['database']['default_collation_name']);
         }
@@ -1214,7 +1218,7 @@ class PhinxMySqlGenerator
         if (!empty($oldTable['foreign_keys'])) {
             foreach ($oldTable['foreign_keys'] as $fkName => $fkData) {
                 if (!isset($newTable['foreign_keys'][$fkName])) {
-                    $output = $this->getForeignKeyRemove($output, $fkName);
+                    $output = $this->getForeignKeyRemove($output, $fkData['COLUMN_NAME'], $fkName);
                 }
             }
         }
@@ -1238,9 +1242,9 @@ class PhinxMySqlGenerator
      *
      * @return array
      */
-    protected function getForeignKeyRemove(array $output, string $indexName): array
+    protected function getForeignKeyRemove(array $output, string $columnName, string $constraintName): array
     {
-        $output[] = sprintf("%s->dropForeignKey('%s')", $this->ind2, $indexName);
+        $output[] = sprintf("%s->dropForeignKey('%s', '%s')", $this->ind2, $columnName, $constraintName);
 
         return $output;
     }
@@ -1256,8 +1260,17 @@ class PhinxMySqlGenerator
      */
     protected function getForeignKeyCreate(array $output, string $fkName, array $fkData): array
     {
+        $dbName = $this->dba->getDbName();
+
+        // quit if we cant do cross db fks
+        if(!$this->options['cross_database_foreign_keys'] && $dbName != $fkData['REFERENCED_DATABASE'])
+            return $output;
+
+        $referencedTable = $dbName == $fkData['REFERENCED_DATABASE'] ?
+            $fkData['REFERENCED_TABLE_NAME'] : $fkData['REFERENCED_DATABASE'].'.'.$fkData['REFERENCED_TABLE_NAME'];
+
         $columns = "'" . $fkData['COLUMN_NAME'] . "'";
-        $referencedTable = "'" . $fkData['REFERENCED_TABLE_NAME'] . "'";
+        $referencedTable = "'" . $referencedTable . "'";
         $referencedColumns = "'" . $fkData['REFERENCED_COLUMN_NAME'] . "'";
         $options = $this->getForeignKeyOptions($fkData, $fkName);
 

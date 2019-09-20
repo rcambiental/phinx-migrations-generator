@@ -63,27 +63,31 @@ class GenerateCommand extends AbstractCommand
         $this->bootstrap($input, $output);
 
         $environment = $input->getOption('environment');
-        $environment = is_scalar($environment) ? (string)$environment : null;
+        $environment = is_scalar($environment) ? (string) $environment : null;
 
         if ($environment === null) {
-            $environment = $this->getConfig()->getDefaultEnvironment();
-            $output->writeln('<comment>warning</comment> no environment specified, defaulting to: ' . $environment);
+            $environment = $this->getConfig()
+                ->getDefaultEnvironment();
+            $output->writeln('<comment>warning</comment> no environment specified, defaulting to: '.$environment);
         } else {
-            $output->writeln('<info>using environment</info> ' . $environment);
+            $output->writeln('<info>using environment</info> '.$environment);
         }
 
-        if (!is_string($environment)) {
+        if (! is_string($environment)) {
             throw new RuntimeException('Invalid or missing environment');
         }
 
-        $envOptions = $this->getConfig()->getEnvironment($environment);
-        if (isset($envOptions['adapter']) && !$this->isAdapterSupported($envOptions['adapter'])) {
-            $output->writeln('<error>adapter not supported</error> ' . $envOptions['adapter']);
+        $envOptions = $this->getConfig()
+            ->getEnvironment($environment);
+
+        if (isset($envOptions['adapter']) && ! $this->isAdapterSupported($envOptions['adapter'])) {
+            $output->writeln('<error>adapter not supported</error> '.$envOptions['adapter']);
 
             return 1;
         }
+
         if (isset($envOptions['name'])) {
-            $output->writeln('<info>using database</info> ' . $envOptions['name']);
+            $output->writeln('<info>using database</info> '.$envOptions['name']);
         } else {
             $output->writeln('<error>Could not determine database name! Please specify a database name in your config file.</error>');
 
@@ -92,9 +96,20 @@ class GenerateCommand extends AbstractCommand
 
         $settings = $this->getGeneratorSettings($input, $environment);
 
-        $output->writeln('<info>using config file</info> ' . ($settings['config_file'] ?? null));
-        $output->writeln('<info>using migration path</info> ' . ($settings['migration_path'] ?? null));
-        $output->writeln('<info>using schema file</info> ' . ($settings['schema_file'] ?? null));
+        $output->writeln('<info>using config file</info> '.($settings['config_file'] ?? null));
+        $output->writeln('<info>using migration path</info> '.($settings['migration_path'] ?? null));
+        $output->writeln('<info>using schema file</info> '.($settings['schema_file'] ?? null));
+        $output->writeln('<info>using schema file</info> '.($settings['schema_file'] ?? null));
+        $output->writeln('<info>generating foreign keys?</info> ' . (!empty($settings['foreign_keys']) ? 'true' : 'false'));
+
+        // cross db fk
+        $crossDbCond = '';
+        $realCrossDbFkValue = $this->getConfig()->offsetExists('cross_database_foreign_keys') ?
+            $this->getConfig()->offsetGet('cross_database_foreign_keys') : false;
+        if(empty($settings['foreign_keys']) && !empty($realCrossDbFkValue))
+            $crossDbCond = ' (detected value as <info>true</info> but resolved as false, please enable <info>foreign_keys</info> if you want to use this feature)';
+
+        $output->writeln('<info>generating cross db foreign keys?</info> ' . (!empty($settings['cross_database_foreign_keys']) ? 'true' : 'false'.$crossDbCond));
 
         $generator = $this->getMigrationGenerator($settings, $input, $output, $environment);
 
@@ -207,9 +222,10 @@ class GenerateCommand extends AbstractCommand
         $pdo = $this->getPdo($manager, $environment);
 
         $foreignKeys = $config->offsetExists('foreign_keys') ? $config->offsetGet('foreign_keys') : false;
+        $crossDatabaseForeignKeys = $config->offsetExists('cross_database_foreign_keys') ?
+            $config->offsetGet('cross_database_foreign_keys') && $foreignKeys  : false;
         $defaultMigrationPrefix = $config->offsetExists('default_migration_prefix') ? $config->offsetGet('default_migration_prefix') : null;
         $markMigration = $config->offsetExists('mark_generated_migration') ? $config->offsetGet('mark_generated_migration') : true;
-
         $defaultMigrationTable = $envOptions['default_migration_table'] ?? 'phinxlog';
 
         $name = $input->getOption('name');
@@ -223,6 +239,7 @@ class GenerateCommand extends AbstractCommand
             'schema_file' => $schemaFile,
             'migration_path' => $migrationsPaths[0],
             'foreign_keys' => $foreignKeys,
+            'cross_database_foreign_keys' => $crossDatabaseForeignKeys,
             'config_file' => $configFilePath,
             'name' => $name,
             'overwrite' => $overwrite,

@@ -53,7 +53,7 @@ class MySqlSchemaAdapter implements SchemaAdapterInterface
      *
      * @return string
      */
-    protected function getDbName(): string
+    public function getDbName(): string
     {
         return (string)$this->createQueryStatement('select database()')->fetchColumn();
     }
@@ -383,29 +383,32 @@ class MySqlSchemaAdapter implements SchemaAdapterInterface
                 cols.TABLE_NAME,
                 cols.COLUMN_NAME,
                 cRefs.CONSTRAINT_NAME,
+                cRefs.UNIQUE_CONSTRAINT_SCHEMA as REFERENCED_DATABASE,
                 refs.REFERENCED_TABLE_NAME,
                 refs.REFERENCED_COLUMN_NAME,
                 cRefs.UPDATE_RULE,
-                cRefs.DELETE_RULE
-            FROM INFORMATION_SCHEMA.COLUMNS AS cols
-            LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS refs
-                ON refs.TABLE_SCHEMA=cols.TABLE_SCHEMA
-                AND refs.REFERENCED_TABLE_SCHEMA=cols.TABLE_SCHEMA
-                AND refs.TABLE_NAME=cols.TABLE_NAME
-                AND refs.COLUMN_NAME=cols.COLUMN_NAME
-            LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS cons
-                ON cons.TABLE_SCHEMA=cols.TABLE_SCHEMA
-                AND cons.TABLE_NAME=cols.TABLE_NAME
-                AND cons.CONSTRAINT_NAME=refs.CONSTRAINT_NAME
-            LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS cRefs
-                ON cRefs.CONSTRAINT_SCHEMA=cols.TABLE_SCHEMA
-                AND cRefs.CONSTRAINT_NAME=refs.CONSTRAINT_NAME
+                cRefs.DELETE_RULE 
+            FROM
+                INFORMATION_SCHEMA.COLUMNS AS cols 
+                LEFT JOIN
+                    INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS refs 
+                    ON refs.TABLE_SCHEMA = cols.TABLE_SCHEMA 
+                    AND refs.TABLE_NAME = cols.TABLE_NAME 
+                    AND refs.COLUMN_NAME = cols.COLUMN_NAME 
+                LEFT JOIN
+                    INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS cons 
+                    ON cons.TABLE_SCHEMA = cols.TABLE_SCHEMA 
+                    AND cons.TABLE_NAME = cols.TABLE_NAME 
+                    AND cons.CONSTRAINT_NAME = refs.CONSTRAINT_NAME 
+                LEFT JOIN
+                    INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS cRefs 
+                    ON cRefs.CONSTRAINT_SCHEMA = cols.TABLE_SCHEMA 
+                    AND cRefs.CONSTRAINT_NAME = refs.CONSTRAINT_NAME 
             WHERE
                 cols.TABLE_NAME in (%s)
-                AND cols.TABLE_SCHEMA = DATABASE()
-                AND refs.REFERENCED_TABLE_NAME IS NOT NULL
-                AND cons.CONSTRAINT_TYPE = 'FOREIGN KEY'
-            ;", implode(',', $quotedNames));
+                AND cols.TABLE_SCHEMA = DATABASE() 
+                AND refs.REFERENCED_TABLE_NAME IS NOT NULL 
+                AND cons.CONSTRAINT_TYPE = 'FOREIGN KEY'", implode(',', $quotedNames));
 
         $rows = $this->queryFetchAll($sql);
 

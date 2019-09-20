@@ -78,6 +78,7 @@ The phinx-migrations-generator uses the configuration of phinx.
 Parameter | Values | Default | Description
 --- | --- | --- | ---
 foreign_keys | bool | false | Enable or disable foreign key migrations.
+cross_database_foreign_keys | bool | false | Enable or disable cross database foreign keys. It's required _foreign_keys_ to be enabled for this to work.
 default_migration_prefix | string | null | If specified, in the absence of the name parameter, the default migration name will be offered with this prefix and a random hash at the end.
 mark_generated_migration | bool | true | Enable or disable marking the migration as applied after creation.
 migration_base_class | string | 'Phinx\Migration\AbstractMigration' | Sets up base class of created migration.
@@ -110,6 +111,7 @@ return [
         'migrations' => $migrationPath,
     ],
     'foreign_keys' => false,
+    'cross_database_foreign_keys' => false,
     'default_migration_prefix' => 'db_change_',
     'mark_generated_migration' => true,
     'migration_base_class' => \Phinx\Migration\AbstractMigration::class,

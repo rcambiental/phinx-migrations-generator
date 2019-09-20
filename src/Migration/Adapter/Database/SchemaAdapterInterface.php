@@ -35,4 +35,11 @@ interface SchemaAdapterInterface
      * @return string identifier escaped string
      */
     public function ident(string $value): string;
+
+    /**
+     * Gets the current database name.
+     * 
+     * @return string
+     */
+    public function getDbName(): string;
 }
