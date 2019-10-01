@@ -255,8 +255,9 @@ class MySqlSchemaAdapter implements SchemaAdapterInterface
 
         $quotedNames = $this->quoteArray($tableNames);
         $sql = sprintf('SELECT * FROM information_schema.columns
-                    WHERE table_schema=database()
-                    AND table_name in (%s)', implode(',', $quotedNames));
+                    WHERE TABLE_SCHEMA = database()
+                    AND TABLE_NAME in (%s) 
+                    ORDER BY ORDINAL_POSITION ASC', implode(',', $quotedNames));
 
         $rows = $this->queryFetchAll($sql);
 
